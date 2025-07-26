@@ -39,12 +39,25 @@ class POSApplication(QMainWindow):
         self.conn = None
         self.current_user = None
         self.init_database()
+        self.load_app_settings()
         
         # Show login screen
         self.show_login_screen()
         
         # Enable keyboard shortcuts
         self.setFocusPolicy(Qt.StrongFocus)
+    
+    def load_app_settings(self):
+        """Load application settings"""
+        try:
+            if os.path.exists("app_settings.json"):
+                with open("app_settings.json", 'r') as f:
+                    self.app_settings = json.load(f)
+            else:
+                self.app_settings = {}
+        except Exception as e:
+            print(f"Error loading app settings: {e}")
+            self.app_settings = {}
         
     def create_app_icon(self):
         """Create application icon"""
@@ -93,8 +106,27 @@ class POSApplication(QMainWindow):
     
     def show_pos_screen(self):
         """Show POS interface"""
-        self.pos_widget = POSWidget(self)
-        self.setCentralWidget(self.pos_widget)
+        # Check which POS version to use
+        pos_version = self.app_settings.get('pos_version', 'Enhanced POS (Git Version)')
+        
+        if pos_version == 'Enhanced POS (Git Version)':
+            # Use the enhanced POS with barcode scanner
+            try:
+                from pos_widget_enhanced import EnhancedPOSWidget
+                if not hasattr(self, 'enhanced_pos_widget'):
+                    self.enhanced_pos_widget = EnhancedPOSWidget(self)
+                self.setCentralWidget(self.enhanced_pos_widget)
+                self.setWindowTitle("Store Manager - Enhanced POS")
+            except ImportError:
+                # Fallback to regular POS
+                self.pos_widget = POSWidget(self)
+                self.setCentralWidget(self.pos_widget)
+                self.setWindowTitle("Store Manager - Point of Sale")
+        else:
+            # Use the simple POS
+            self.pos_widget = POSWidget(self)
+            self.setCentralWidget(self.pos_widget)
+            self.setWindowTitle("Store Manager - Point of Sale")
     
     def show_dashboard(self):
         """Show dashboard"""
